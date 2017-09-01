@@ -8,7 +8,7 @@ $aadTenant = 'maslab1.onmicrosoft.com'
 $aadAdminUser = 'serviceadmin@maslab1.onmicrosoft.com'
 $aadAdminPassword = '<PASSWORD>'
 $aadDelegatedAdminUser = 'delegatedadmin@maslab1.onmicrosoft.com'
-$aadDelegatedAdminPassword = 'M@sL@b01!'
+$aadDelegatedAdminPassword = '<PASSWORD>'
 $aadTenantUser = 'tenantuser@maslab1.onmicrosoft.com'
 $aadTenantPassword = '<PASSWORD>'
 #endregion

@@ -5,7 +5,7 @@ $identityquery = "select [Id],[Email],[UserName],[FirstName],[LastName] from dbo
 Write-Output "Invoke SQL query against SQL server [$SQLServer]"
 $requestresults = Invoke-SqlCmd -Database AzureStackLabDb -query $requestquery
 $pendingrequest = $requestresults | Where-Object {($_.Status -eq 2) -and ($_.Entitystate -eq 0) } | sort RequestNumber
-$serverresults = Invoke-SqlCmd -Database AzureStackLabDb -query $serverquery 
+$serverresults = Invoke-SqlCmd -Database AzureStackLabDb -query $serverquery
 
 Write-Output "Determine expired servers"
 $datetime = (Get-Date).ToUniversalTime()

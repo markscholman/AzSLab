@@ -623,7 +623,9 @@ param(
     $password
 )
 if (!$SQLServer) {
+    Write-Output "No SQLServer specified, retrieving it from SMA"
     $SQLServer = Get-AutomationVariable -Name "SQLServer"
+    Write-Output "Using: $SQLServer"
 }
 if (!$password) {
     $sqluser = Get-AutomationPSCredential -Name 'SQLAdmin'
