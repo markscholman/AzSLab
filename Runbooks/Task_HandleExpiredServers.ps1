@@ -1,12 +1,11 @@
-﻿Get-SQLVariables
-$serverquery = "select * from dbo.servers"
+﻿$serverquery = "select * from dbo.servers"
 $requestquery = "select * from dbo.requests"
 $identityquery = "select [Id],[Email],[UserName],[FirstName],[LastName] from dbo.AspNetUsers"
 
 Write-Output "Invoke SQL query against SQL server [$SQLServer]"
-$requestresults = Invoke-SqlCmd -SQLServer $SQLServer -Database AzureStackLabDb -query $requestquery -username $sauser -password $sapassword
+$requestresults = Invoke-SqlCmd -Database AzureStackLabDb -query $requestquery
 $pendingrequest = $requestresults | Where-Object {($_.Status -eq 2) -and ($_.Entitystate -eq 0) } | sort RequestNumber
-$serverresults = Invoke-SqlCmd -SQLServer $SQLServer -Database AzureStackLabDb -query $serverquery -username $sauser -password $sapassword
+$serverresults = Invoke-SqlCmd -Database AzureStackLabDb -query $serverquery 
 
 Write-Output "Determine expired servers"
 $datetime = (Get-Date).ToUniversalTime()
@@ -20,12 +19,12 @@ Update Servers
 SET InUse=1,UserId=NULL,StartDate=NULL,EndDate=NULL
 WHERE Name=@serverName;
 "@ -f $server.Name
-            Invoke-SqlCmd -SQLServer $SQLServer -Database AzureStackLabDb -query $serverClearQuery -username $sauser -password $sapassword
+            Invoke-SqlCmd -Database AzureStackLabDb -query $serverClearQuery
             if ($pendingrequest) {
                 Write-Output "There are pending reuests, selecting the first one"
                 $nextrequest = $pendingrequest | select -First 1
                 Write-Output "Retrieving identity from the database"
-                $identities = Invoke-SqlCmd -SQLServer $SQLServer -Database AzureStackLabIdentity -query $identityquery -username $sauser -password $sapassword
+                $identities = Invoke-SqlCmd -Database AzureStackLabIdentity -query $identityquery
                 $identity = $identities | Where-Object {$_.UserName -eq $nextrequest.UserId}
                 Write-Output "Wipe server [$($server.Name)] and assign it to [$($nextrequest.UserId)]"
                 $params =  @{
@@ -46,14 +45,14 @@ Update Servers
 SET InUse=1,UserId='{1}',StartDate='{2}',EndDate='{3}'
 WHERE Name=@serverName;
 "@ -f $server.Name,$pendingrequest.UserId,$datenow.ToString('yyyy/MM/dd HH:mm:ss'),$enddate.ToString('yyyy/MM/dd HH:mm:ss')
-                Invoke-SqlCmd -SQLServer $SQLServer -Database AzureStackLabDb -query $serverUpdateQuery -username $sauser -password $sapassword
+                Invoke-SqlCmd -Database AzureStackLabDb -query $serverUpdateQuery
                 $requestUpdateQuery = @"
 Declare @requestId nvarchar(100) = '{0}'
 Update Requests
 SET IsProcessed=1,Status=3,DateProcessed='{1}',ServerName='{2}'
 WHERE RequestId=@requestId;
 "@ -f $pendingrequest.RequestId,$datenow.ToString('yyyy/MM/dd HH:mm:ss'),$server.Name
-                Invoke-SqlCmd -SQLServer $SQLServer -Database AzureStackLabDb -query $requestUpdateQuery -username $sauser -password $sapassword
+                Invoke-SqlCmd -Database AzureStackLabDb -query $requestUpdateQuery
             } else {
                 Write-Output "No pending requests wipe server [$($server.Name)]"
                 $bmcCred = Get-AutomationPSCredential -Name 'BMCCred'
@@ -80,7 +79,7 @@ Update Servers
 SET InUse=0
 WHERE Name=@serverName;
 "@ -f $server.Name
-                Invoke-SqlCmd -SQLServer $SQLServer -Database AzureStackLabDb -query $serverUpdateQuery -username $sauser -password $sapassword
+                Invoke-SqlCmd -Database AzureStackLabDb -query $serverUpdateQuery
 
             }
         } catch {

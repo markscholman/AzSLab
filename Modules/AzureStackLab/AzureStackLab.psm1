@@ -3,12 +3,6 @@
     $null = New-Item -Path $scriptLog -ItemType File -Force
 }
 
-function Get-SQLVariables {
-    $Global:SQLServer = "ASLABSQL01"
-    $Global:sauser = "sa"
-    $Global:sapassword = "<PASSWORD>"
-}
-
 function Write-VerboseLog {
   [CmdletBinding()]
   param ( 
@@ -323,7 +317,8 @@ function Start-AzureStackHostConfiguration {
 param(
     [ipaddress]$serverIpAddress,
     [pscredential]$LocalAdminCredential,
-    [pscredential]$AADAdminCredential
+    [pscredential]$AADAdminCredential,
+    [pscredential]$LABShareAdminCredential
 )
 
     Write-LogMessage -Message "[$serverIpAddress] - Configure Azure Stack host."
@@ -331,10 +326,11 @@ param(
     param(
         [ipaddress]$serverIpAddress,
         [pscredential]$LocalAdminCredential,
-        [pscredential]$AADAdminCredential
+        [pscredential]$AADAdminCredential,
+        [pscredential]$LABShareAdminCredential
     )
-        #region Uninstall Powershell 2017 (Juli)
-        Start-Process msiexec.exe -ArgumentList '/x "{F0952E40-484C-4C01-957B-416115F2F8E0}" /quiet' -Wait -ErrorAction SilentlyContinue
+        #region Uninstall Powershell 2017 (August)
+        Start-Process msiexec.exe -ArgumentList '/x "{DC73281A-DCF0-4D69-88FA-C6AB50103DFB}" /quiet' -Wait -ErrorAction SilentlyContinue
         #endregion
 
         #region Set Power Plan to High Performance
@@ -396,8 +392,7 @@ param(
         #region Copy files
         #Write-LogMessage -Message "Copying files to d:\"  
 
-        $cred = New-Object -TypeName System.Management.Automation.PSCredential "AZURESTACK\admdeploy",(ConvertTo-SecureString -AsPlainText -Force 'Welcome01!')
-        $z = New-PSDrive -Name InstallShare -PSProvider FileSystem -Root '\\10.1.100.43\labshare' -Credential $cred
+        $z = New-PSDrive -Name InstallShare -PSProvider FileSystem -Root '\\10.1.100.43\labshare' -Credential $LABShareAdminCredential
         Copy-Item -Path \\10.1.100.43\LabShare\Training\ -Destination D:\ -Recurse -ErrorAction SilentlyContinue
         #Write-LogMessage -Message "Files have been copied."  
         #endregion
@@ -431,8 +426,8 @@ param(
         #endregion
 
         #region Logon to Azure Stack RTM
-        $aadCredential = New-Object System.Management.Automation.PSCredential("aadadmin@tenant.onmicrosoft.com", `
-                         (ConvertTo-SecureString -String "password" -AsPlainText -Force))
+        #$aadCredential = New-Object System.Management.Automation.PSCredential("aadadmin@tenant.onmicrosoft.com", `
+        #                 (ConvertTo-SecureString -String "password" -AsPlainText -Force))
         Login-AzureRmAccount -EnvironmentName "AzureStackAdmin" -TenantId $AadTenant -Credential $AADAdminCredential
         #endregion 
 
@@ -512,144 +507,12 @@ param(
 
         #region Install MySQL RP
         Set-Location 'D:\Training\PaaS\MySQL'
-        $vmLocalAdminPass = ConvertTo-SecureString "" -AsPlainText -Force
+        $vmLocalAdminPass = ConvertTo-SecureString "<PASSWORD>" -AsPlainText -Force
         $vmLocalAdminCreds = New-Object System.Management.Automation.PSCredential ("mysqlrpadmin", $vmLocalAdminPass)
         .\DeployMySQLProvider.ps1 -DirectoryTenantID $AadTenant -AzCredential $AADAdminCredential -VMLocalCredential $vmLocalAdminCreds -ResourceGroupName "System.MySql" -VmName "SystemMySqlRP" -ArmEndpoint $AdminArmEndpoint -TenantArmEndpoint $tenantArmEndpoint
         #endregion
         #>
     } -ComputerName $serverIpAddress -Credential $LocalAdminCredential -ArgumentList $serverIpAddress, $LocalAdminCredential, $AADAdminCredential
-}
-
-function Start-AzureStackConsoleVMConfiguration {
-param(
-    [ipaddress]$serverIpAddress,
-    [pscredential]$LocalAdminCredential,
-    [pscredential]$AADAdminCredential
-)
-    Write-LogMessage -Message "[$serverIpAddress] - Configure Azure Stack Console VM."
-    Invoke-Command -ScriptBlock {
-    param($serverIpAddress,$LocalAdminCredential,$AADAdminCredential)
-        $AzureStackVMAdmin = New-Object System.Management.Automation.PSCredential("AZURESTACK\AzureStackAdmin", $LocalAdminCredential.Password)
-        Write-Output $AzureStackVMAdmin.UserName 
-        Write-Output $AzureStackVMAdmin.GetNetworkCredential().Password
-        Get-NetIPAddress
-        Invoke-Command -VMName MAS-CON01 -ScriptBlock {
-        param($serverIpAddress,$AzureStackVMAdmin,$AADAdminCredential)
-            #region Set Power Plan to High Performance
-            Try {
-                    $HighPerf = powercfg -l | %{if($_.contains("High performance")) {$_.split()[3]}}
-                    $CurrPlan = $(powercfg -getactivescheme).split()[3]
-                    if ($CurrPlan -ne $HighPerf) {powercfg -setactive $HighPerf}
-                    #Write-LogMessage -Message "Power Plan set to High Performance."
-                } Catch {
-                    Write-Warning -Message "Unable to set power plan to high performance"
-                }
-
-            #endregion
-
-            #region Set home page
-            $path = 'HKCU:\Software\Microsoft\Internet Explorer\Main\'
-            $name = 'start page'
-            $value = 'https://publicportal.local.azurestack.external'
-            Set-Itemproperty -Path $path -Name $name -Value $value
-            #Write-LogMessage -Message "IE Homepage set to https://publicportal.local.azurestack.external"
-            #endregion
-
-            #region disable IE ESC
-            function Disable-InternetExplorerESC {
-                $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
-                $UserKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A8-37EF-4b3f-8CFC-4F3A74704073}"
-                Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 0 -Force
-                Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 0 -Force
-                Stop-Process -Name Explorer -Force
-                #Write-LogMessage -Message "IE Enhanced Security Configuration (ESC) has been disabled."
-            }
-            function Enable-InternetExplorerESC {
-                $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
-                $UserKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A8-37EF-4b3f-8CFC-4F3A74704073}"
-                Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 1 -Force
-                Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 1 -Force
-                Stop-Process -Name Explorer
-                #Write-LogMessage -Message "IE Enhanced Security Configuration (ESC) has been enabled."
-            }
-
-            Disable-InternetExplorerESC
-            #endregion
-
-            #region Disable ESC
-            function Disable-UserAccessControl {
-                Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 00000000 -Force
-                #Write-LogMessage -Message "User Access Control (UAC) has been disabled."    
-            }
-            Disable-UserAccessControl
-            #endregion
-
-            #region Disable realtime scanning (Defender)
-            Set-MpPreference -DisableRealtimeMonitoring $true -DisableBehaviorMonitoring $true -DisablePrivacyMode $true -DisableIntrusionPreventionSystem $true `
-                 -DisableScriptScanning $true -DisableArchiveScanning $true -DisableScanningMappedNetworkDrivesForFullScan $true -DisableIOAVProtection $true `
-                 -DisableEmailScanning $true -DisableScanningNetworkFiles $true -DisableBlockAtFirstSeen $true -DisableAutoExclusions $true
-            #Write-LogMessage -Message "Realtime scanning has been disabled." 
-            #endregion
-
-            #region Copy Lab files
-            New-Item -ItemType Directory C:\Scripts -ErrorAction SilentlyContinue
-            Set-Location C:\Scripts
-            $cred = New-Object -TypeName System.Management.Automation.PSCredential "AZURESTACK\admdeploy",(ConvertTo-SecureString -AsPlainText -Force 'Welcome01!')
-            $z = New-PSDrive -Name InstallShare -PSProvider FileSystem -Root '\\10.1.100.43\labshare' -Credential $cred
-            Copy-Item -Path \\10.1.100.43\LabShare\Training\Labs -Destination C:\ -Recurse
-            Copy-Item -Path \\10.1.100.43\labshare\Training\AzureStack-Tools-master -Destination C:\ -Recurse
-            Copy-Item -Path '\\MAS-HNV01\D$\Training\Images\WindowsServer2016-1612.vhd' -Destination "C:\labs\day3\images\WindowsServer2016Standard-1612.vhd"
-            #Write-LogMessage -Message "Lab files have been copied to c:\labs." 
-            #endregion
-
-            #region Uninstall Powershell 2017
-            Start-Process msiexec.exe -ArgumentList '/x "{4275CC00-2797-40D5-9752-AD555CFDC806}" /quiet' -Wait
-            #Start-Process msiexec.exe -ArgumentList '/x 6B7CD146E21BDB9418543494DF256518 /quiet' -Wait
-            #endregion
-
-            #region Install Azure Stack Tools for TP3
-            #Write-LogMessage -Message "Installing Azure Stack Tools for TP3."  
-            New-Item -ItemType Directory C:\Scripts -ErrorAction SilentlyContinue
-            # Install the AzureRM.Bootstrapper module
-            $null = Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force
-            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-            Install-Module -Name AzureRm.BootStrapper -Force
-            # Installs and imports the API Version Profile required by Azure Stack into the current PowerShell session.
-            Use-AzureRmProfile -Profile 2017-03-09-profile -Force
-            Install-Module -Name AzureStack -RequiredVersion 1.2.9 -Force
-            #Get-Module -ListAvailable | where-Object {$_.Name -like "Azure*"}
-            Invoke-WebRequest -UseBasicParsing -Uri https://github.com/Azure/AzureStack-Tools/archive/master.zip -OutFile "$env:TEMP\master.zip"
-            Expand-Archive "$env:TEMP\master.zip" -DestinationPath C:\ -Force
-            Remove-Item "$env:TEMP\master.zip"
-            $Folder = New-Item -ItemType Directory -Path ~\Documents\WindowsPowerShell\Modules -Force
-
-            ###### ----- ****** TEMP RETRIEVE TOOLS FROM SHARE INSTEAD OF WEB  ****** --------- #############
-
-            Get-ChildItem -Path C:\AzureStack-Tools-master -Directory | ForEach-Object -Process {
-                if (Get-ChildItem -Path $_.FullName -Filter *.psm1) {
-                    $PSM1 = Get-ChildItem -Path $_.FullName -Filter *.psm1
-                    Copy-Item -Path $_.FullName -Destination "$($Folder.FullName)\$($PSM1.BaseName)" -Recurse
-                    New-ModuleManifest -Path "$($Folder.FullName)\$($PSM1.BaseName)\$($PSM1.BaseName).psd1" -RootModule $PSM1.BaseName
-                }
-            } 
-            #Write-LogMessage -Message " Azure Stack Tools for TP3 have been installed."  
-            #endregion
-
-            #region Configure Azure Stack environment
-            $tenantName = $AADAdminCredential.UserName.Split('@')[1]
-            $AadTenant = Get-AADTenantGUID -AADTenantName $tenantName
-            # Use this command to access the administrative portal
-            $azEnv = Add-AzureStackAzureRmEnvironment -Name "AzureStackAdmin" -ArmEndpoint "https://adminmanagement.local.azurestack.external" 
-            $AdminArmEndpoint = $azEnv.ResourceManagerUrl
-            #endregion
-
-            #region Logon to Azure Stack TP3
-            Login-AzureRmAccount -EnvironmentName "AzureStackAdmin" -TenantId $AadTenant -Credential $AADAdminCredential
-            #endregion  
-            
-        } -Credential $AzureStackVMAdmin -ArgumentList $serverIpAddress,$AzureStackVMAdmin,$AADAdminCredential
-    } -ComputerName $serverIpAddress -Credential $LocalAdminCredential -ArgumentList $serverIpAddress, $LocalAdminCredential, $AADAdminCredential
-
 }
 
 function ConfigureUser {
@@ -729,48 +592,6 @@ function Delete-ExpiredUsers {
     Write-Output $expiredUsers
 }
 
-function SendEmailMessage {
-[cmdletbinding()]
-param(
-    $UserName,
-    $FirstName,
-    $LastName,
-    $emailAddress,
-    $AmountOfDays
-)
-
-$mailCred = Get-AutomationPSCredential -Name 'SendGridCred'
-$mailFrom = Get-AutomationVariable -Name "SendGridMailFrom"
-$mailServer = Get-AutomationVariable -Name "MailServer"
-$mailFromName = Get-AutomationVariable -Name "SendGridMailFromName"
-
-Write-Output "Sending expiration warning to [$UserName]."
-$mailParams = @{
-    To = "$FirstName $LastName <$emailAddress>"
-    From = "$mailFromName <$mailFrom>"
-    Bcc = "$mailFromName <$mailFrom>"
-    SMTPServer = $mailServer
-    Credential = $mailCred 
-    Subject = "{Expiration Warning] - Azure Stack Lab login"
-    Body= @"
-    Hi $FirstName,
-    <br><br>
-    Your account is about to expire. Please backup any content from your system that you would like to keep.
-    Your account will expire after $AmountOfDays day(s). To see more information about your server go to https://lab.asic.cloud
-    <br><br>
-    If you need more time on your lab please send a email.
-    <br><br>
-    Best regards,
-    <br>
-    $mailFromName
-    <br><br>
-"@
-    BodyAsHtml = $true
-    UseSsl = $true
-}
-Send-MailMessage @mailParams
-}
-
 function ResetServerPassword {
 [cmdletbinding()]
 param(
@@ -792,84 +613,24 @@ try {
 }
 }
 
-function SendEmail {
-[cmdletbinding()]
-param(
-    $UserName,
-    $FirstName,
-    $LastName,
-    $Password,
-    $emailAddress,
-    $ServerIpAddress,
-    $AmountOfDays
-)
-
-$mailCred = Get-AutomationPSCredential -Name 'SendGridCred'
-$mailFrom = Get-AutomationVariable -Name "SendGridMailFrom"
-$mailServer = Get-AutomationVariable -Name "MailServer"
-$mailFromName = Get-AutomationVariable -Name "SendGridMailFromName"
-$rdGatewayUrl = Get-AutomationVariable -Name "RDGatewayURL"
-
-Write-Output "Generating tempory RDP file."
-$rdpFile = Get-Content C:\Install\Scripts\MASLABHOST.rdp
-#$rdpFile = $rdpFile.Replace("[USERNAME]","AZURESTACK\$UserName")
-$rdpFile = $rdpFile.Replace("[IPADDRESS]",$ServerIpAddress)
-$rdpFile = $rdpFile.Replace("[GATEWAYURI]",$rdGatewayUrl)
-Set-Content C:\Install\Scripts\MASLAB-$UserName.rdp -Value $rdpFile -Force
-Write-Output "Sending login information + RDP to user [$UserName]."
-$mailParams = @{
-    To = "$FirstName $LastName <$emailAddress>"
-    From = "$mailFromName <$mailFrom>"
-    Bcc = "$mailFromName <$mailFrom>"
-    SMTPServer = $mailServer
-    Credential = $mailCred 
-    Subject = "Azure Stack Lab login"
-    Attachments = "C:\Install\Scripts\MASLAB-$UserName.rdp"
-    Body= @"
-    Hi $FirstName,
-    <br><br>
-    Your account has been created / reset. You can use the attached RDP icon where the remote desktop gateway information is already supplied. Or if you use RDP tooling like RoyalTS or Devolutions RDM find here your information:
-    <br><br>
-    <h4>Remote Desktop Gateway:</h4>
-    Server: $rdGatewayUrl
-    <br>
-    Username: $env:USERDOMAIN\$UserName
-    <br>
-    Password: $Password
-    <br><br>
-    <h4>Your server login:</h4>
-    Username: Administrator (*1) 
-    <br>
-    Password: $Password
-    <br><br> 
-    Your account will expire after $AmountOfDays day(s). If you need more time on your lab please send a email.
-    <br><br>
-    Best regards,
-    <br>
-    $mailFromName
-    <br><br>
-    (*1)
-    If you checked the "Azure Stack Pre-installed" checkbox during your request then your username is: AZURESTACK\azurestackadmin. And wait for at least 60 minutes before login as the Azure Stack installer is running and will reboot couple times. Once you are logged in you can track the installation progress.)
-    <br>
-    If your RDP icon attached to this mail is blocked, please log in to the website and connect using the "connect" button in your server details pane.
-"@
-    BodyAsHtml = $true
-    UseSsl = $true
-}
-Send-MailMessage @mailParams
-Write-Output "Finished. Removing temp RDP file."
-Remove-Item "C:\Install\Scripts\MASLAB-$UserName.rdp" -Force
-}
-
 function Invoke-SqlCmd {
 [cmdletbinding()]
 param(
     $SQLServer,
     $Database,
     $query,
-    $username,
+    $username = 'sa',
     $password
 )
+if (!$SQLServer) {
+    $SQLServer = Get-AutomationVariable -Name "SQLServer"
+}
+if (!$password) {
+    $sqluser = Get-AutomationPSCredential -Name 'SQLAdmin'
+    $user = $sqluser.UserName
+    $password = $sqluser.GetNetworkCredential().Password
+}
+
     $result = Invoke-Command -ScriptBlock {
         $table = Invoke-SqlCmd -Database $using:Database -Query $using:query -Username $using:username -Password $using:password
         return $table
@@ -893,5 +654,4 @@ Function Get-RandomPassword {
     return $TempPassword + '!'
 }
 
-Export-ModuleMember -Function Write-LogMessage, Reset-PhysicalNode, Wait-BaremetalDeployment, Start-InstallAzureStack, Watch-AzureStackInstall, Start-AzureStackHostConfiguration, Start-AzureStackConsoleVMConfiguration,
-SendEmail,Invoke-SqlCmd,ResetServerPassword,ConfigureUser,Get-RandomPassword,Get-SQLVariables,Get-AlmostExpiredUsers,Delete-ExpiredUsers,SendEmailMessage
+Export-ModuleMember -Function Write-LogMessage, Reset-PhysicalNode, Wait-BaremetalDeployment, Start-InstallAzureStack, Watch-AzureStackInstall, Start-AzureStackHostConfiguration, Invoke-SqlCmd,ResetServerPassword,ConfigureUser,Get-RandomPassword,Get-AlmostExpiredUsers,Delete-ExpiredUsers

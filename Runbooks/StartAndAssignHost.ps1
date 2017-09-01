@@ -18,11 +18,10 @@ try {
     $count = 0
     while ($true) {
         $count++
-        $cred = New-Object System.Management.Automation.PSCredential("Administrator", (ConvertTo-SecureString -AsPlainText -Force "P@ssw0rd!"))
         $result = Invoke-Command -ScriptBlock {
             $value = Test-Path C:\CloudDeployment -ErrorAction SilentlyContinue
             return $value
-        } -ComputerName $serverIPAddress -Credential $cred -ErrorAction SilentlyContinue
+        } -ComputerName $serverIPAddress -Credential $serverCred -ErrorAction SilentlyContinue
         Write-Output "Waiting for server to come online - Step $count out of 15"
         if ($result -eq $true) {break;}
         if ($count -eq 15) {
@@ -36,19 +35,23 @@ try {
     if ($notReachable -eq $true) {
         Write-Error "Cannot reach the host in time, aborting and sending notification to admin"
         $mailCred = Get-AutomationPSCredential -Name 'SendGridCred'
+        $mailServer = Get-AutomationVariable -Name "MailServer"
+        $mailFrom = Get-AutomationVariable -Name "SendGridMailFrom"
+        $mailFromName = Get-AutomationVariable -Name "SendGridMailFromName"
+        $Adminmail =  Get-AutomationVariable -Name 'AdminEmail'
         $mailParams = @{
-            To = "Mark Scholman <mark.scholman@inspark.nl>"
-            From = "Azure Stack POC Admin <support@tryazurestack.com>"
-            SMTPServer = 'smtp.sendgrid.net'
+            To = "Admin <$Adminmail>"
+            From = "$mailFromName <$mailFrom>"
+            SMTPServer = $mailServer
             Credential = $mailCred 
             Subject = "Azure Stack host Start and Assign failed"
-            Body= "Hi Mark,
+            Body= "Hi,
             <br><br>
             A host with bmc address $serverBMCIpAddress failed the assignment.
             <br><br>
             Best regards,
             <br>
-            Azure Stack Labs"
+            Azure Stack Automation Admin"
             BodyAsHtml = $true
         }
         Send-MailMessage @mailParams

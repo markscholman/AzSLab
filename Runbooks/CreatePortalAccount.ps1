@@ -10,7 +10,7 @@ Connect-MsolService -Credential $AADAdmin
 
 #$FirstName = 'test'
 #$LastName = 'account'
-#$Email = 'mark.scholman@inspark.nl'
+#$Email = 'mark@markscholman.com'
 #$AmountOfDays = 5
 
 $userPrincipalName = "$FirstName.$LastName`@asiccloud.onmicrosoft.com"
