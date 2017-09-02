@@ -60,19 +60,19 @@ Publish-SmaRunbook -Id $runbook.RunbookID -WebServiceEndpoint $smaEP
 $runbook = Import-SmaRunbook -Path "..\Runbooks\StartAndAssignHost.ps1" -Tags "Provisioning" -WebServiceEndpoint $smaEP 
 Publish-SmaRunbook -Id $runbook.RunbookID -WebServiceEndpoint $smaEP
 #import runbook
-$runbook = Import-SmaRunbook -Path "..\Runbooks\Task_HandleExpiredServers.ps1" -Tags "Tasks" -WebServiceEndpoint $smaEP 
-Publish-SmaRunbook -Id $runbook.RunbookID -WebServiceEndpoint $smaEP
-#import runbook
-$runbook = Import-SmaRunbook -Path "..\Runbooks\CreatePortalAccount.ps1" -Tags "Tasks" -WebServiceEndpoint $smaEP 
+$runbook = Import-SmaRunbook -Path "..\Runbooks\CreatePortalAccount.ps1" -Tags "Provisioning" -WebServiceEndpoint $smaEP 
 Publish-SmaRunbook -Id $runbook.RunbookID -WebServiceEndpoint $smaEP
 #import runbook
 $runbook = Import-SmaRunbook -Path "..\Runbooks\Task_AccountManagement.ps1" -Tags "Tasks" -WebServiceEndpoint $smaEP 
 Publish-SmaRunbook -Id $runbook.RunbookID -WebServiceEndpoint $smaEP
 #import runbook
-$runbook = Import-SmaRunbook -Path "C:\Install\Scripts\MASLAB_ResetEnvironment.ps1" -Tags "MASLAB" -WebServiceEndpoint $smaEP 
+$runbook = Import-SmaRunbook -Path "..\Runbooks\Task_HandleExpiredServers.ps1" -Tags "Tasks" -WebServiceEndpoint $smaEP 
 Publish-SmaRunbook -Id $runbook.RunbookID -WebServiceEndpoint $smaEP
 #import runbook
-$runbook = Import-SmaRunbook -Path "C:\Install\Scripts\MASLAB_HostConfig.ps1" -Tags "MASLAB" -WebServiceEndpoint $smaEP 
+$runbook = Import-SmaRunbook -Path "..\Runbooks\MASLAB_ResetEnvironment.ps1" -Tags "MASLAB" -WebServiceEndpoint $smaEP 
+Publish-SmaRunbook -Id $runbook.RunbookID -WebServiceEndpoint $smaEP
+#import runbook
+$runbook = Import-SmaRunbook -Path "..\Runbooks\MASLAB_HostConfig.ps1" -Tags "MASLAB" -WebServiceEndpoint $smaEP 
 Publish-SmaRunbook -Id $runbook.RunbookID -WebServiceEndpoint $smaEP
 
 #remove runbooks
@@ -99,7 +99,7 @@ Get-SmaRunbook -WebServiceEndpoint $smaEP | select RunbookName
 
 #interact with a running job
 Get-SmaJob -WebServiceEndpoint $smaEP | sort starttime| Select JobID, JobStatus,starttime, endTime #-Last 1
-$job = "54017dc8-e8fb-44bb-9078-f3149c7ae4dc"
+$job = "48d24b75-a266-471d-9630-a5cfcb4d4be4"
 Get-SmaJob -Id $job -WebServiceEndpoint $smaEP
 #Stop-SmaJob -Id $job -WebServiceEndpoint $smaEP
 #Resume-SmaJob -Id $job -WebServiceEndpoint $smaEP
