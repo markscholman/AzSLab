@@ -10,6 +10,7 @@ $serverresults = Invoke-SqlCmd -Database AzureStackLabDb -query $serverquery
 Write-Output "Determine expired servers"
 $datetime = (Get-Date).ToUniversalTime()
 $serverstowipe = $serverresults | Where-Object {($_.InUse -eq $true) -and ($_.EndDate -le $datetime) -and ($_.Entitystate -eq 0) }
+Write-Output $serverstowipe
 if ($serverstowipe) {
     foreach ($server in $serverstowipe) {
         try {

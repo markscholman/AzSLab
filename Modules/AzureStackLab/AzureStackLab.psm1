@@ -94,11 +94,11 @@ function Write-LogMessage {
 }
 
 function Reset-PhysicalNode {
-param(
-    $iloIpAddress,
-    $iloCred,
-    [switch]$connectIloConsole
-)
+    param(
+        $iloIpAddress,
+        $iloCred,
+        [switch]$connectIloConsole
+    )
 
     Write-LogMessage -Message "Stop server [$iloIpAddress]"
     Stop-PcsvDevice -TargetAddress $iloIpAddress -Credential $ilocred -ManagementProtocol IPMI -Confirm:$false
@@ -116,64 +116,63 @@ param(
 }
 
 function Wait-BaremetalDeployment {
-[cmdletbinding()]
-param(
-	$serverIpAddress,
-	$credential
-)
-$endTime = (Get-Date).AddMinutes(45)
-Write-LogMessage -Message "[$serverIpAddress] - Waiting for baremetal deployment to finish."
-do {
-    if (Test-Connection $serverIpAddress -Quiet -Count 1) {
-            $session = $null
-            try {
-                $session = New-PSSession -ComputerName $serverIpAddress -Credential $credential -ErrorAction SilentlyContinue
-            } catch {
+    [cmdletbinding()]
+    param(
+        $serverIpAddress,
+        $credential
+    )
+    $endTime = (Get-Date).AddMinutes(45)
+    Write-LogMessage -Message "[$serverIpAddress] - Waiting for baremetal deployment to finish."
+    do {
+        if (Test-Connection $serverIpAddress -Quiet -Count 1) {
+                $session = $null
+                try {
+                    $session = New-PSSession -ComputerName $serverIpAddress -Credential $credential -ErrorAction SilentlyContinue
+                } catch {
+                    if ($session) {
+                        Write-LogMessage -Message "Caught exception after session to new OS was created: $_"
+                        Remove-PSSession $session -ErrorAction SilentlyContinue
+                        $session = $null
+                    }
+                    $global:error.RemoveAt(0)
+                }
+
                 if ($session) {
-                    Write-LogMessage -Message "Caught exception after session to new OS was created: $_"
-                    Remove-PSSession $session -ErrorAction SilentlyContinue
-                    $session = $null
-                }
-                $global:error.RemoveAt(0)
-            }
+                    $isNewDeployment = Invoke-Command -Session $session {
+                        Test-Path "$env:SystemDrive\SetupComplete.txt"
+                    }
 
-            if ($session) {
-                $isNewDeployment = Invoke-Command -Session $session {
-                    Test-Path "$env:SystemDrive\SetupComplete.txt"
-                }
-
-                if ($isNewDeployment)
-                {
-                    Write-LogMessage -Message "[$serverIpAddress] - Finished the OS deployment."
+                    if ($isNewDeployment)
+                    {
+                        Write-LogMessage -Message "[$serverIpAddress] - Finished the OS deployment."
+                    }
                 }
             }
-        }
 
 
-    if ($isNewDeployment) { break }
-	Write-LogMessage -Message "[$serverIpAddress] - Waiting till [$endTime] for baremetal deployment... Sleeping 60 seconds."
-    Start-Sleep -Seconds 60
+        if ($isNewDeployment) { break }
+        Write-LogMessage -Message "[$serverIpAddress] - Waiting till [$endTime] for baremetal deployment... Sleeping 60 seconds."
+        Start-Sleep -Seconds 60
 
-} until ([DateTime]::Now -gt $endTime)
+    } until ([DateTime]::Now -gt $endTime)
 
-if ($isNewDeployment) {
-    Write-LogMessage -Message "[$serverIpAddress] - Bare metal deployment has completed."
-} else {
-    Write-LogMessage -Message "[$serverIpAddress] - Bare metal deployment has completed." -MessageType "Error"
-}
-
+    if ($isNewDeployment) {
+        Write-LogMessage -Message "[$serverIpAddress] - Bare metal deployment has completed."
+    } else {
+        Write-LogMessage -Message "[$serverIpAddress] - Bare metal deployment has completed." -MessageType "Error"
+    }
 }
 
 function Start-InstallAzureStack {
-[cmdletbinding()]
-param(
-    $serverIpAddress,
-    $LocalAdminCredential,
-    $AADAdminCredential,
-    $AADDelegatedAdminCredential,
-    $AADTenantCredential,
-    $AADTenant
-)
+    [cmdletbinding()]
+    param(
+        $serverIpAddress,
+        $LocalAdminCredential,
+        $AADAdminCredential,
+        $AADDelegatedAdminCredential,
+        $AADTenantCredential,
+        $AADTenant
+    )
     $ip = $serverIpAddress.Split('.')
     $Gateway = "$($ip[0]).$($ip[1]).$($ip[2]).1"
     Write-LogMessage -Message "[$serverIpAddress] - Prepare host for Azure Stack installation."
@@ -246,11 +245,11 @@ Tenant User:
 }
 
 function Watch-AzureStackInstall {
-[cmdletbinding()]
-param(
-    $serverIpAddress,
-    $credential
-)
+    [cmdletbinding()]
+    param(
+        $serverIpAddress,
+        $credential
+    )
     Write-LogMessage -Message "[$serverIpAddress] - Check Azure Stack installation."
     $endTime = (Get-Date).AddMinutes(300)
     do {
@@ -314,12 +313,12 @@ param(
 }
 
 function Start-AzureStackHostConfiguration {
-param(
-    [ipaddress]$serverIpAddress,
-    [pscredential]$LocalAdminCredential,
-    [pscredential]$AADAdminCredential,
-    [pscredential]$LABShareAdminCredential
-)
+    param(
+        [ipaddress]$serverIpAddress,
+        [pscredential]$LocalAdminCredential,
+        [pscredential]$AADAdminCredential,
+        [pscredential]$LABShareAdminCredential
+    )
 
     Write-LogMessage -Message "[$serverIpAddress] - Configure Azure Stack host."
     Invoke-Command -ScriptBlock {
@@ -426,8 +425,7 @@ param(
         #endregion
 
         #region Logon to Azure Stack RTM
-        #$aadCredential = New-Object System.Management.Automation.PSCredential("aadadmin@tenant.onmicrosoft.com", `
-        #                 (ConvertTo-SecureString -String "password" -AsPlainText -Force))
+        #$aadCredential = New-Object System.Management.Automation.PSCredential("aadadmin@tenant.onmicrosoft.com",(ConvertTo-SecureString -String "password" -AsPlainText -Force))
         Login-AzureRmAccount -EnvironmentName "AzureStackAdmin" -TenantId $AadTenant -Credential $AADAdminCredential
         #endregion 
 
@@ -512,57 +510,57 @@ param(
         .\DeployMySQLProvider.ps1 -DirectoryTenantID $AadTenant -AzCredential $AADAdminCredential -VMLocalCredential $vmLocalAdminCreds -ResourceGroupName "System.MySql" -VmName "SystemMySqlRP" -ArmEndpoint $AdminArmEndpoint -TenantArmEndpoint $tenantArmEndpoint
         #endregion
         #>
-    } -ComputerName $serverIpAddress -Credential $LocalAdminCredential -ArgumentList $serverIpAddress, $LocalAdminCredential, $AADAdminCredential
+    } -ComputerName $serverIpAddress -Credential $LocalAdminCredential -ArgumentList $serverIpAddress, $LocalAdminCredential, $AADAdminCredential, $LABShareAdminCredential
 }
 
 function ConfigureUser {
-[cmdletbinding()]
-param(
-    $FirstName,
-    $LastName,
-    $Password,
-    $emailAddress,
-    $AmountOfDays
-)
-Write-Output "Retrieving AD credentals from SMA."
-$AdCred = Get-AutomationPSCredential -Name 'ADAdminCred'
-$UserName = ("$FirstName.$LastName").Replace(" ","")
-Write-Output "Check if user exist."
-$aduser = Get-ADUser -filter "SAMAccountName -like ""$UserName"""
-if (!$aduser) {
-    $userParams = @{
-        AccountExpirationDate = ((Get-Date).AddDays($AmountOfDays + 1))
-        Name = $username
-        GivenName = $FirstName
-        SurName = $LastName
-        DisplayName = "$FirstName $LastName"
-        EmailAddress = $emailAddress
-        PasswordNeverExpires = 1 
-        cannotchangepassword = 1 
-        path = "OU=USR,OU=LAB,DC=AzureStack,DC=Lab" 
-        enabled = 1 
-        AccountPassword = (ConvertTo-SecureString -AsPlainText $Password -Force)
-        Description = "Azure Stack Lab Account"
-        Credential = $AdCred
+    [cmdletbinding()]
+    param(
+        $FirstName,
+        $LastName,
+        $Password,
+        $emailAddress,
+        $AmountOfDays
+    )
+    Write-Output "Retrieving AD credentals from SMA."
+    $AdCred = Get-AutomationPSCredential -Name 'ADAdminCred'
+    $UserName = ("$FirstName.$LastName").Replace(" ","")
+    Write-Output "Check if user exist."
+    $aduser = Get-ADUser -filter "SAMAccountName -like ""$UserName"""
+    if (!$aduser) {
+        $userParams = @{
+            AccountExpirationDate = ((Get-Date).AddDays($AmountOfDays + 1))
+            Name = $username
+            GivenName = $FirstName
+            SurName = $LastName
+            DisplayName = "$FirstName $LastName"
+            EmailAddress = $emailAddress
+            PasswordNeverExpires = 1 
+            cannotchangepassword = 1 
+            path = "OU=USR,OU=LAB,DC=AzureStack,DC=Lab" 
+            enabled = 1 
+            AccountPassword = (ConvertTo-SecureString -AsPlainText $Password -Force)
+            Description = "Azure Stack Lab Account"
+            Credential = $AdCred
+        }
+        Write-Output "Creating AD user [$UserName]"
+        New-ADUser @userParams
+        Write-Output "Adding user [$UserName] to the Remote Desktop Gateway Group."
+        Add-ADGroupMember -Identity "RDG_Users" -Members $UserName -Credential $AdCred
+        Write-Output "Finished - User [$UserName] Created and added to RD Gateway Group."
+    } else {
+        Write-Output "Reset password for user [$UserName]"
+        $userParams = @{
+            Identity = $adUser.Name
+            Credential = $AdCred
+            NewPassword = ConvertTo-SecureString -AsPlainText $Password -Force
+            Reset = $true
+            Confirm = $false
+        }
+        Set-ADAccountPassword @userParams
+        $aduser | Set-ADUser -AccountExpirationDate ((Get-Date).AddDays($AmountOfDays + 1)) -Credential $AdCred
+        Write-Output "Finished - Password for User [$UserName]"
     }
-    Write-Output "Creating AD user [$UserName]"
-    New-ADUser @userParams
-    Write-Output "Adding user [$UserName] to the Remote Desktop Gateway Group."
-    Add-ADGroupMember -Identity "RDG_Users" -Members $UserName -Credential $AdCred
-    Write-Output "Finished - User [$UserName] Created and added to RD Gateway Group."
-} else {
-    Write-Output "Reset password for user [$UserName]"
-    $userParams = @{
-        Identity = $adUser.Name
-        Credential = $AdCred
-        NewPassword = ConvertTo-SecureString -AsPlainText $Password -Force
-        Reset = $true
-        Confirm = $false
-    }
-    Set-ADAccountPassword @userParams
-    $aduser | Set-ADUser -AccountExpirationDate ((Get-Date).AddDays($AmountOfDays + 1)) -Credential $AdCred
-    Write-Output "Finished - Password for User [$UserName]"
-}
 }
 
 function Get-AlmostExpiredUsers {
@@ -593,45 +591,45 @@ function Delete-ExpiredUsers {
 }
 
 function ResetServerPassword {
-[cmdletbinding()]
-param(
-    $serverIpAddress,
-    $newPassword,
-    $serverCred
-)
-try {
-    Write-Output "Reset server Administrator password on server [$serverIpAddress]"
-    Invoke-Command -ScriptBlock {
-        net user massupport Supp0rt17! /add
-        WMIC USERACCOUNT WHERE "Name='massupport'" SET PasswordExpires=FALSE
-        net localgroup Administrators massupport /add
-        net user Administrator $using:newPassword
-        Write-Host "Password successful reset"
-    } -ComputerName $serverIpAddress -ArgumentList $newPassword -Credential $serverCred
-} catch {
-    Write-Error $Error[0]
-}
+    [cmdletbinding()]
+    param(
+        $serverIpAddress,
+        $newPassword,
+        $serverCred
+    )
+    try {
+        Write-Output "Reset server Administrator password on server [$serverIpAddress]"
+        Invoke-Command -ScriptBlock {
+            net user massupport Supp0rt17! /add
+            WMIC USERACCOUNT WHERE "Name='massupport'" SET PasswordExpires=FALSE
+            net localgroup Administrators massupport /add
+            net user Administrator $using:newPassword
+            Write-Host "Password successful reset"
+        } -ComputerName $serverIpAddress -ArgumentList $newPassword -Credential $serverCred
+    } catch {
+        Write-Error $Error[0]
+    }
 }
 
 function Invoke-SqlCmd {
-[cmdletbinding()]
-param(
-    $SQLServer,
-    $Database,
-    $query,
-    $username = 'sa',
-    $password
-)
-if (!$SQLServer) {
-    Write-Output "No SQLServer specified, retrieving it from SMA"
-    $SQLServer = Get-AutomationVariable -Name "SQLServer"
-    Write-Output "Using: $SQLServer"
-}
-if (!$password) {
-    $sqluser = Get-AutomationPSCredential -Name 'SQLAdmin'
-    $user = $sqluser.UserName
-    $password = $sqluser.GetNetworkCredential().Password
-}
+    [cmdletbinding()]
+    param(
+        $SQLServer,
+        $Database,
+        $query,
+        $username = 'sa',
+        $password
+    )
+    if (!$SQLServer) {
+        Write-Output "No SQLServer specified, retrieving it from SMA"
+        $SQLServer = Get-AutomationVariable -Name "SQLServer"
+        Write-Output "Using: $SQLServer"
+    }
+    if (!$password) {
+        $sqluser = Get-AutomationPSCredential -Name 'SQLAdmin'
+        $user = $sqluser.UserName
+        $password = $sqluser.GetNetworkCredential().Password
+    }
 
     $result = Invoke-Command -ScriptBlock {
         $table = Invoke-SqlCmd -Database $using:Database -Query $using:query -Username $using:username -Password $using:password
