@@ -139,7 +139,6 @@ If your RDP icon attached to this mail is blocked, please log in to the website 
 
 
     if ($InstallAzureStack -eq "True") {
-        Get-SQLVariables
         $serverUpdateQuery = @"
 Declare @serverIp nvarchar(100) = '{0}'
 SELECT Servers.IpAddress, Servers.Name, AzureADs.TenantName, AzureADs.ServiceAdminUser, AzureADs.ServiceAdminPassword ,AzureADs.TenantUser, AzureADs.TenantPassword
@@ -148,7 +147,7 @@ INNER JOIN AzureADs
 ON Servers.Name=AzureADs.ServerName
 WHERE Servers.IpAddress=@serverIp
 "@ -f $serverIPAddress
-        $azuread = Invoke-SqlCmd -SQLServer $SQLServer -Database AzureStackLabDb -query $serverUpdateQuery -username $sauser -password $sapassword
+        $azuread = Invoke-SqlCmd -SQLServer $SQLServer -Database AzureStackLabDb -query $serverUpdateQuery
         if ($azuread) {
             Write-Output "Install AzureStack."
             $AadAdminCred = New-Object pscredential ($($azuread.ServiceAdminUser),(ConvertTo-SecureString -AsPlainText -Force $($azuread.ServiceAdminPassword)))
