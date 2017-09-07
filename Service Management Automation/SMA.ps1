@@ -99,7 +99,7 @@ Get-SmaRunbook -WebServiceEndpoint $smaEP | select RunbookName
 
 #interact with a running job
 Get-SmaJob -WebServiceEndpoint $smaEP | sort starttime| Select JobID, JobStatus,starttime, endTime #-Last 1
-$job = "c2ff6a63-55a4-4db5-be96-92f180b87ba6"
+$job = "297ff80b-8a9a-4bfa-a3cc-264af0c30880"
 Get-SmaJob -Id $job -WebServiceEndpoint $smaEP
 #Stop-SmaJob -Id $job -WebServiceEndpoint $smaEP
 #Resume-SmaJob -Id $job -WebServiceEndpoint $smaEP

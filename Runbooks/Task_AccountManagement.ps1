@@ -25,7 +25,7 @@ $almostExpiredUsers | foreach -Process {
         Bcc = "$mailFromName <$mailFrom>"
         SMTPServer = $mailServer
         Credential = $mailCred 
-        Subject = "{Expiration Warning] - Azure Stack Lab login"
+        Subject = "[Expiration Warning] - Azure Stack Lab login"
         Body= @"
 Hi $FirstName,
 <br><br>
