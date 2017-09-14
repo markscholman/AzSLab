@@ -192,7 +192,7 @@ cd C:\CloudDeployment\Setup
 $adminpass = ConvertTo-SecureString '{0}' -AsPlainText -Force 
 $aadpass = ConvertTo-SecureString '{1}' -AsPlainText -Force 
 $aadcred = New-Object System.Management.Automation.PSCredential ('{2}', $aadpass) 
-.\InstallAzureStackPOC.ps1 -AdminPassword $adminpass -InfraAzureDirectoryTenantAdminCredential $aadcred -InfraAzureDirectoryTenantName "{3}"
+.\InstallAzureStackPOC.ps1 -AdminPassword $adminpass -InfraAzureDirectoryTenantAdminCredential $aadcred -InfraAzureDirectoryTenantName "{3}" -TimeServer "129.6.15.28"
 '@ -f $LocalAdminPassword, $AADAdminPassword, $AADAdminUser, $AADTenant
         $installscript | Out-File C:\CloudDeployment\InstallAzurestack.ps1 -Force
         if ($AADDelegatedAdminCredential) {

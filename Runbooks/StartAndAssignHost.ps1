@@ -2,6 +2,7 @@
 param(
     $serverBMCIpAddress,
     $serverIPAddress,
+    $ServerType,
     $FirstName,
     $LastName,
     $Email,
@@ -138,7 +139,7 @@ If your RDP icon attached to this mail is blocked, please log in to the website 
 
 
 
-    if ($InstallAzureStack -eq "True") {
+    if ($InstallAzureStack -eq "True" -and $ServerType -eq "SingleNode") {
         $serverUpdateQuery = @"
 Declare @serverIp nvarchar(100) = '{0}'
 SELECT Servers.IpAddress, Servers.Name, AzureADs.TenantName, AzureADs.ServiceAdminUser, AzureADs.ServiceAdminPassword ,AzureADs.TenantUser, AzureADs.TenantPassword
