@@ -328,8 +328,8 @@ function Start-AzureStackHostConfiguration {
         [pscredential]$AADAdminCredential,
         [pscredential]$LABShareAdminCredential
     )
-        #region Uninstall Powershell 2017 (August)
-        Start-Process msiexec.exe -ArgumentList '/x "{DC73281A-DCF0-4D69-88FA-C6AB50103DFB}" /quiet' -Wait -ErrorAction SilentlyContinue
+        #region Uninstall Powershell 2017 (September)
+        Start-Process msiexec.exe -ArgumentList '/x "{AF544A13-0A15-4685-9E7B-C7BE9E6E11D9}" /quiet' -Wait -ErrorAction SilentlyContinue
         #endregion
 
         #region Set Power Plan to High Performance

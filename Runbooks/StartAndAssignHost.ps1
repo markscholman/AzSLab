@@ -115,6 +115,8 @@ Username: $env:USERDOMAIN\$UserName
 Password: $Password
 <br><br>
 <h4>Your server login:</h4>
+Server IP: $serverIPAddress
+<br>
 Username: Administrator (*1) 
 <br>
 Password: $Password
