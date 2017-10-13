@@ -401,7 +401,7 @@ function Start-AzureStackHostConfiguration {
         Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
         Install-Module -Name 'AzureRm.Bootstrapper' -Force
         Install-AzureRmProfile -profile '2017-03-09-profile' -Force 
-        Install-Module -Name AzureStack -RequiredVersion 1.2.10 -Force
+        Install-Module -Name AzureStack -RequiredVersion 1.2.11 -Force
         Invoke-WebRequest -UseBasicParsing -Uri https://github.com/Azure/AzureStack-Tools/archive/master.zip -OutFile "$env:TEMP\master.zip"
         Expand-Archive "$env:TEMP\master.zip" -DestinationPath C:\ -Force
         Remove-Item "$env:TEMP\master.zip"
@@ -430,7 +430,7 @@ function Start-AzureStackHostConfiguration {
         #endregion 
 
         #region Register all RP's
-        $null = Get-AzureRmResourceProvider -ListAvailable | Register-AzureRmResourceProvider -Force
+        $null = Get-AzureRmResourceProvider -ListAvailable | Register-AzureRmResourceProvider
         #endregion
 
         #region Create Default Offer and Plan
