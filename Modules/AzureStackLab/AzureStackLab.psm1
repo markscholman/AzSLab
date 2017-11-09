@@ -328,8 +328,9 @@ function Start-AzureStackHostConfiguration {
         [pscredential]$AADAdminCredential,
         [pscredential]$LABShareAdminCredential
     )
-        #region Uninstall Powershell 2017 (September)
-        Start-Process msiexec.exe -ArgumentList '/x "{AF544A13-0A15-4685-9E7B-C7BE9E6E11D9}" /quiet' -Wait -ErrorAction SilentlyContinue
+        #region Uninstall Powershell 2017 (October / November)
+        Start-Process msiexec.exe -ArgumentList '/x "{E69FCD69-7DE1-4315-8D1A-27520E604590}" /quiet' -Wait -ErrorAction SilentlyContinue        
+        Start-Process msiexec.exe -ArgumentList '/x "{B4208837-8918-413C-B66D-1F5CA39A2591}" /quiet' -Wait -ErrorAction SilentlyContinue        
         #endregion
 
         #region Set Power Plan to High Performance
@@ -626,6 +627,7 @@ function Invoke-SqlCmd {
         Write-Output "Using: $SQLServer"
     }
     if (!$password) {
+        Write-Output "No password specified, using SMA SQL Admin"
         $sqluser = Get-AutomationPSCredential -Name 'SQLAdmin'
         $user = $sqluser.UserName
         $password = $sqluser.GetNetworkCredential().Password
