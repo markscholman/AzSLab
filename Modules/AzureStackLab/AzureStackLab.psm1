@@ -331,6 +331,15 @@ function Start-AzureStackHostConfiguration {
         #region Uninstall Powershell 2017 (October / November)
         Start-Process msiexec.exe -ArgumentList '/x "{E69FCD69-7DE1-4315-8D1A-27520E604590}" /quiet' -Wait -ErrorAction SilentlyContinue        
         Start-Process msiexec.exe -ArgumentList '/x "{B4208837-8918-413C-B66D-1F5CA39A2591}" /quiet' -Wait -ErrorAction SilentlyContinue        
+        Start-Process msiexec.exe -ArgumentList '/x "{2EBA7413-CA20-473F-A805-1074A6746FA3}" /quiet' -Wait -ErrorAction SilentlyContinue        
+        
+        #endregion
+
+        #region Cleanup Diskspace
+        Remove-Item C:\CloudDeployment\Images -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item C:\CloudDeployment\NuGetStore -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item C:\CloudDeployment\SpecializedImages -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item C:\CloudDeployment\Monitoring -Recurse -Force -ErrorAction SilentlyContinue
         #endregion
 
         #region Set Power Plan to High Performance
@@ -394,6 +403,8 @@ function Start-AzureStackHostConfiguration {
 
         $z = New-PSDrive -Name InstallShare -PSProvider FileSystem -Root '\\10.1.100.43\labshare' -Credential $LABShareAdminCredential
         Copy-Item -Path \\10.1.100.43\LabShare\Training\ -Destination D:\ -Recurse -ErrorAction SilentlyContinue
+        Copy-Item -Path "\\10.1.100.43\LabShare\HPE Education\Labs" -Destination D:\ -Recurse -ErrorAction SilentlyContinue
+        
         #Write-LogMessage -Message "Files have been copied."  
         #endregion
 

@@ -22,7 +22,7 @@ WHERE Name=@serverName;
 "@ -f $server.Name
             Invoke-SqlCmd -Database AzureStackLabDb -query $serverClearQuery
             if ($pendingrequest) {
-                Write-Output "There are pending reuests, selecting the first one"
+                Write-Output "There are pending requests, selecting the first one"
                 $nextrequest = $pendingrequest | select -First 1
                 Write-Output "Retrieving identity from the database"
                 $identities = Invoke-SqlCmd -Database AzureStackLabIdentity -query $identityquery
