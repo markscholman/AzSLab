@@ -36,6 +36,8 @@ WHERE Name=@serverName;
                     Email = $identity.Email
                     AmountOfDays = $nextrequest.AmountOfDays
                     InstallAzurestack = $nextrequest.AzureStackPreInstalled
+                    DisconnectedMode = $DisconnectedMode
+
                 }
                 .\ResetAndAssignHost.ps1 @params
                 $datenow = (Get-Date).ToUniversalTime()

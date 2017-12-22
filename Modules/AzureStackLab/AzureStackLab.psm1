@@ -171,14 +171,15 @@ function Start-InstallAzureStack {
         $AADAdminCredential,
         $AADDelegatedAdminCredential,
         $AADTenantCredential,
-        $AADTenant
+        $AADTenant,
+        $DisconnectedMode
     )
     $ip = $serverIpAddress.Split('.')
     $Gateway = "$($ip[0]).$($ip[1]).$($ip[2]).1"
     Write-LogMessage -Message "[$serverIpAddress] - Prepare host for Azure Stack installation."
     Write-LogMessage -Message "[$serverIpAddress] - Start Azure Stack installation has been triggered."
     Invoke-Command -ScriptBlock {
-    param($LocalAdminCredential,$AADAdminCredential,$AADDelegatedAdminCredential,$AADTenantCredential,$AADTenant,$serverIpAddress,$Gateway)
+    param($LocalAdminCredential,$AADAdminCredential,$AADDelegatedAdminCredential,$AADTenantCredential,$AADTenant,$serverIpAddress,$Gateway,$DisconnectedMode)
         $LocalAdminPassword = $LocalAdminCredential.GetNetworkCredential().Password
         $AADAdminUser = $AADAdminCredential.UserName
         $AADAdminPassword = $AADAdminCredential.GetNetworkCredential().Password
@@ -187,13 +188,25 @@ function Start-InstallAzureStack {
         $AADTenantUser = $AADTenantCredential.UserName
         $AADTenantPassword = $AADTenantCredential.GetNetworkCredential().Password
         
+
+
         $installscript = @'
 cd C:\CloudDeployment\Setup
 $adminpass = ConvertTo-SecureString '{0}' -AsPlainText -Force 
 $aadpass = ConvertTo-SecureString '{1}' -AsPlainText -Force 
-$aadcred = New-Object System.Management.Automation.PSCredential ('{2}', $aadpass) 
-.\InstallAzureStackPOC.ps1 -AdminPassword $adminpass -InfraAzureDirectoryTenantAdminCredential $aadcred -InfraAzureDirectoryTenantName "{3}" -TimeServer "129.6.15.28"
+$aadcred = New-Object System.Management.Automation.PSCredential ('{2}', $aadpass)
+$InfraAzureDirectoryTenantName = '{3}'
+
 '@ -f $LocalAdminPassword, $AADAdminPassword, $AADAdminUser, $AADTenant
+if ($DisconnectedMode -eq "True") {
+    $installscript += @'
+.\InstallAzureStackPOC.ps1 -AdminPassword $adminpass -TimeServer '129.6.15.28' -UseADFS
+'@ 
+} else {
+    $installscript += @'
+.\InstallAzureStackPOC.ps1 -AdminPassword $adminpass -InfraAzureDirectoryTenantAdminCredential $aadcred -InfraAzureDirectoryTenantName $InfraAzureDirectoryTenantName -TimeServer '129.6.15.28'
+'@ 
+}
         $installscript | Out-File C:\CloudDeployment\InstallAzurestack.ps1 -Force
         if ($AADDelegatedAdminCredential) {
             $logininfo = @'
@@ -222,6 +235,12 @@ Tenant User:
 
 '@ -f $AADAdminUser, $AADAdminPassword, $AADTenantUser, $AADTenantPassword
         }
+if ($DisconnectedMode -eq "True") {
+    $logininfo = @'
+AZURESTACK\CloudAdmin
+<Password that you received in the email
+'@ 
+        }
         $logininfo | Out-File C:\Users\Public\Desktop\AzureStackLoginInfo.txt -Force
         $WinLogonRegPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 	    Set-ItemProperty $WinLogonRegPath "DefaultUsername" -Value "Administrator"
@@ -241,7 +260,7 @@ Tenant User:
         Set-DnsClientServerAddress -InterfaceAlias "MAS_Uplink" -ServerAddresses 8.8.8.8 -Confirm:$false
         Start-Sleep -Seconds 300
         Rename-Computer -NewName AZS-HVN01 -Restart
-    } -ComputerName $serverIpAddress -Credential $LocalAdminCredential -ArgumentList $LocalAdminCredential,$AADAdminCredential,$AADDelegatedAdminCredential,$AADTenantCredential,$AADTenant,$serverIpAddress,$Gateway
+    } -ComputerName $serverIpAddress -Credential $LocalAdminCredential -ArgumentList $LocalAdminCredential,$AADAdminCredential,$AADDelegatedAdminCredential,$AADTenantCredential,$AADTenant,$serverIpAddress,$Gateway,$DisconnectedMode
 }
 
 function Watch-AzureStackInstall {

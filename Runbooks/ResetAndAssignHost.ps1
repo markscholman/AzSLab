@@ -6,7 +6,8 @@ param(
     $LastName,
     $Email,
     $AmountOfDays,
-    $InstallAzureStack
+    $InstallAzureStack,
+    $DisconnectedMode
 )
 try {
     Write-Output "Start runbook Reset and assign server"
@@ -26,7 +27,7 @@ try {
     Wait-BaremetalDeployment @paramsWaitBareMetal
 
     $UserName = ("$FirstName.$LastName").Replace(" ","")
-    $password = Get-RandomPassword -length 12
+    $password = Get-RandomPassword -length 8
 
     Write-Output "Configure user [$UserName]"
     $paramsNewUser = @{
@@ -124,6 +125,7 @@ WHERE Servers.IpAddress=@serverIp
                 AADAdminCredential = $AadAdminCred
                 AADTenantCredential = $AadTenantCred
                 AADTenant = $azuread.TenantName
+                DisconnectedMode = $DisconnectedMode
             }
             Start-InstallAzureStack @paramsMASInstall
 
