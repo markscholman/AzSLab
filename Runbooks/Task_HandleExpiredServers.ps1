@@ -1,14 +1,12 @@
 ﻿$serverquery = "select * from dbo.servers"
 $requestquery = "select * from dbo.requests"
 $identityquery = "select [Id],[Email],[UserName],[FirstName],[LastName] from dbo.AspNetUsers"
+$datetime = (Get-Date).ToUniversalTime()
 
 Write-Output "Invoke SQL query against SQL server [$SQLServer]"
-$requestresults = Invoke-SqlCmd -Database AzureStackLabDb -query $requestquery
-$pendingrequest = $requestresults | Where-Object {($_.Status -eq 2) -and ($_.Entitystate -eq 0) } | sort RequestNumber
 $serverresults = Invoke-SqlCmd -Database AzureStackLabDb -query $serverquery
 
 Write-Output "Determine expired servers"
-$datetime = (Get-Date).ToUniversalTime()
 $serverstowipe = $serverresults | Where-Object {($_.InUse -eq $true) -and ($_.EndDate -le $datetime) -and ($_.Entitystate -eq 0) }
 Write-Output $serverstowipe
 if ($serverstowipe) {
@@ -21,6 +19,8 @@ SET InUse=1,UserId=NULL,StartDate=NULL,EndDate=NULL
 WHERE Name=@serverName;
 "@ -f $server.Name
             Invoke-SqlCmd -Database AzureStackLabDb -query $serverClearQuery
+            $requestresults = Invoke-SqlCmd -Database AzureStackLabDb -query $requestquery
+            $pendingrequest = $requestresults | Where-Object {($_.Status -eq 2) -and ($_.Entitystate -eq 0) -and ($_.StartDate -le $datetime) } | sort RequestNumber            
             if ($pendingrequest) {
                 Write-Output "There are pending requests, selecting the first one"
                 $nextrequest = $pendingrequest | select -First 1
@@ -37,11 +37,10 @@ WHERE Name=@serverName;
                     AmountOfDays = $nextrequest.AmountOfDays
                     InstallAzurestack = $nextrequest.AzureStackPreInstalled
                     DisconnectedMode = $DisconnectedMode
-
                 }
                 .\ResetAndAssignHost.ps1 @params
                 $datenow = (Get-Date).ToUniversalTime()
-                $enddate = $datenow.AddDays($pendingrequest.AmountOfDays)
+                $enddate = $datenow.AddDays($nextrequest.AmountOfDays)
                 $serverUpdateQuery = @"
 Declare @serverName nvarchar(100) = '{0}'
 Update Servers

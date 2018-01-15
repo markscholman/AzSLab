@@ -187,9 +187,7 @@ function Start-InstallAzureStack {
         $AADDelegatedAdminPassword = $AADDelegatedAdminCredential.GetNetworkCredential().Password
         $AADTenantUser = $AADTenantCredential.UserName
         $AADTenantPassword = $AADTenantCredential.GetNetworkCredential().Password
-        
-
-
+    
         $installscript = @'
 cd C:\CloudDeployment\Setup
 $adminpass = ConvertTo-SecureString '{0}' -AsPlainText -Force 
@@ -347,10 +345,10 @@ function Start-AzureStackHostConfiguration {
         [pscredential]$AADAdminCredential,
         [pscredential]$LABShareAdminCredential
     )
-        #region Uninstall Powershell 2017 (October / November)
-        Start-Process msiexec.exe -ArgumentList '/x "{E69FCD69-7DE1-4315-8D1A-27520E604590}" /quiet' -Wait -ErrorAction SilentlyContinue        
-        Start-Process msiexec.exe -ArgumentList '/x "{B4208837-8918-413C-B66D-1F5CA39A2591}" /quiet' -Wait -ErrorAction SilentlyContinue        
-        Start-Process msiexec.exe -ArgumentList '/x "{2EBA7413-CA20-473F-A805-1074A6746FA3}" /quiet' -Wait -ErrorAction SilentlyContinue        
+        #region Uninstall Powershell 2017 (December)
+        Start-Process msiexec.exe -ArgumentList '/x "{3E92648F-29FD-4832-89A1-243C6B770445}" /quiet' -Wait -ErrorAction SilentlyContinue
+        
+        {3E92648F-29FD-4832-89A1-243C6B770445}   
         
         #endregion
 
