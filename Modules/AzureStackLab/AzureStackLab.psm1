@@ -96,7 +96,7 @@ function Write-LogMessage {
 function Reset-PhysicalNode {
     param(
         $iloIpAddress,
-        $iloCred,
+        [pscredential]$iloCred,
         [switch]$connectIloConsole
     )
 
@@ -119,7 +119,7 @@ function Wait-BaremetalDeployment {
     [cmdletbinding()]
     param(
         $serverIpAddress,
-        $credential
+        [pscredential]$credential
     )
     $endTime = (Get-Date).AddMinutes(45)
     Write-LogMessage -Message "[$serverIpAddress] - Waiting for baremetal deployment to finish."
@@ -167,10 +167,10 @@ function Start-InstallAzureStack {
     [cmdletbinding()]
     param(
         $serverIpAddress,
-        $LocalAdminCredential,
-        $AADAdminCredential,
-        $AADDelegatedAdminCredential,
-        $AADTenantCredential,
+        [pscredential]$LocalAdminCredential,
+        [pscredential]$AADAdminCredential,
+        [pscredential]$AADDelegatedAdminCredential,
+        [pscredential]$AADTenantCredential,
         $AADTenant,
         $DisconnectedMode
     )
@@ -265,7 +265,7 @@ function Watch-AzureStackInstall {
     [cmdletbinding()]
     param(
         $serverIpAddress,
-        $credential
+        [pscredential]$credential
     )
     Write-LogMessage -Message "[$serverIpAddress] - Check Azure Stack installation."
     $endTime = (Get-Date).AddMinutes(300)
@@ -346,10 +346,8 @@ function Start-AzureStackHostConfiguration {
         [pscredential]$LABShareAdminCredential
     )
         #region Uninstall Powershell 2017 (December)
-        Start-Process msiexec.exe -ArgumentList '/x "{3E92648F-29FD-4832-89A1-243C6B770445}" /quiet' -Wait -ErrorAction SilentlyContinue
-        
-        {3E92648F-29FD-4832-89A1-243C6B770445}   
-        
+        Start-Process msiexec.exe -ArgumentList '/x "{3E92648F-29FD-4832-89A1-243C6B770445}" /quiet' -Wait -ErrorAction SilentlyContinue                
+        Start-Process msiexec.exe -ArgumentList '/x "{386C337F-8F89-4530-A231-0FFFBDAB410D}" /quiet' -Wait -ErrorAction SilentlyContinue
         #endregion
 
         #region Cleanup Diskspace
@@ -361,7 +359,7 @@ function Start-AzureStackHostConfiguration {
 
         #region Set Power Plan to High Performance
         Try {
-            $HighPerf = powercfg -l | %{if($_.contains("High performance")) {$_.split()[3]}}
+            $HighPerf = powercfg -l | ForEach-Object {if($_.contains("High performance")) {$_.split()[3]}}
             $CurrPlan = $(powercfg -getactivescheme).split()[3]
             if ($CurrPlan -ne $HighPerf) {powercfg -setactive $HighPerf}
             #Write-LogMessage -Message "Power Plan set to High Performance." 
@@ -431,7 +429,7 @@ function Start-AzureStackHostConfiguration {
         Install-Module -Name 'AzureRm.Bootstrapper' -Force
         Install-AzureRmProfile -profile '2017-03-09-profile' -Force 
         Install-Module -Name AzureStack -RequiredVersion 1.2.11 -Force
-        Invoke-WebRequest -UseBasicParsing -Uri https://github.com/Azure/AzureStack-Tools/archive/master.zip -OutFile "$env:TEMP\master.zip"
+        Invoke-WebRequest -UseBasicParsing -Uri https://codeload.github.com/Azure/AzureStack-Tools/zip/master -OutFile "$env:TEMP\master.zip"
         Expand-Archive "$env:TEMP\master.zip" -DestinationPath C:\ -Force
         Remove-Item "$env:TEMP\master.zip"
         $Folder = New-Item -ItemType Directory -Path ~\Documents\WindowsPowerShell\Modules -Force
@@ -595,7 +593,7 @@ function ConfigureUser {
 function Get-AlmostExpiredUsers {
     $allUsers = Get-ADUser -Filter * -SearchBase "OU=LAB,DC=AzureStack,DC=Lab" -Properties @('AccountExpirationDate','mail')
     $expiredUsers = @()
-    $allUsers | foreach -Process {
+    $allUsers | ForEach-Object -Process {
         $currentDate = Get-Date
         $accountExpirationDate = $_.AccountExpirationDate
         if ((($currentDate.AddDays(5)) -ge $accountExpirationDate) -and ($accountExpirationDate -ne $null)) {
@@ -608,7 +606,7 @@ function Get-AlmostExpiredUsers {
 function Delete-ExpiredUsers {
     $allUsers = Get-ADUser -Filter * -SearchBase "OU=LAB,DC=AzureStack,DC=Lab" -Properties @('AccountExpirationDate','mail')
     $expiredUsers = @()
-    $allUsers | foreach -Process {
+    $allUsers | ForEach-Object -Process {
         $currentDate = Get-Date
         $accountExpirationDate = $_.AccountExpirationDate
         if (($currentDate.Date -gt $accountExpirationDate.Date) -and ($accountExpirationDate -ne $null)) {
