@@ -348,6 +348,7 @@ function Start-AzureStackHostConfiguration {
         #region Uninstall Powershell 2017 (December)
         Start-Process msiexec.exe -ArgumentList '/x "{3E92648F-29FD-4832-89A1-243C6B770445}" /quiet' -Wait -ErrorAction SilentlyContinue                
         Start-Process msiexec.exe -ArgumentList '/x "{386C337F-8F89-4530-A231-0FFFBDAB410D}" /quiet' -Wait -ErrorAction SilentlyContinue
+        Start-Process msiexec.exe -ArgumentList '/x "{358A58BE-7B5E-4C13-BB01-7E29F6823249}" /quiet' -Wait -ErrorAction SilentlyContinue
         #endregion
 
         #region Cleanup Diskspace
