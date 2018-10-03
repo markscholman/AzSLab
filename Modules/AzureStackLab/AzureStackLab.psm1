@@ -345,10 +345,13 @@ function Start-AzureStackHostConfiguration {
         [pscredential]$AADAdminCredential,
         [pscredential]$LABShareAdminCredential
     )
-        #region Uninstall Powershell 2017 (December)
+        #region Uninstall Azure Powershell
         Start-Process msiexec.exe -ArgumentList '/x "{3E92648F-29FD-4832-89A1-243C6B770445}" /quiet' -Wait -ErrorAction SilentlyContinue                
         Start-Process msiexec.exe -ArgumentList '/x "{386C337F-8F89-4530-A231-0FFFBDAB410D}" /quiet' -Wait -ErrorAction SilentlyContinue
         Start-Process msiexec.exe -ArgumentList '/x "{358A58BE-7B5E-4C13-BB01-7E29F6823249}" /quiet' -Wait -ErrorAction SilentlyContinue
+        Start-Process msiexec.exe -ArgumentList '/x "{3BA7CAA9-97BA-4528-B7E1-B640910BB149}" /quiet' -Wait -ErrorAction SilentlyContinue
+
+        
         #endregion
 
         #region Cleanup Diskspace
@@ -429,7 +432,7 @@ function Start-AzureStackHostConfiguration {
         Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
         Install-Module -Name 'AzureRm.Bootstrapper' -Force
         Install-AzureRmProfile -profile '2017-03-09-profile' -Force 
-        Install-Module -Name AzureStack -RequiredVersion 1.2.11 -Force
+        Install-Module -Name AzureStack -RequiredVersion 1.4.0 -Force
         Invoke-WebRequest -UseBasicParsing -Uri https://codeload.github.com/Azure/AzureStack-Tools/zip/master -OutFile "$env:TEMP\master.zip"
         Expand-Archive "$env:TEMP\master.zip" -DestinationPath C:\ -Force
         Remove-Item "$env:TEMP\master.zip"
@@ -466,53 +469,28 @@ function Start-AzureStackHostConfiguration {
         $OfferName = "Trial"
         $RGName = "PlansandOffersRG"
         $Location = (Get-AzsLocation).Name
-
-        $computeParams = @{
-        Name = "computedefault"
-        CoresLimit = 200
-        AvailabilitySetCount = 10
-        VirtualMachineCount = 50
-        VmScaleSetCount = 10
-        Location = $Location
-        }
-
-        $netParams = @{
-        Name = "netdefault"
-        PublicIpsPerSubscription = 500
-        VNetsPerSubscription = 500
-        GatewaysPerSubscription = 10
-        ConnectionsPerSubscription = 20
-        LoadBalancersPerSubscription = 500
-        NicsPerSubscription = 1000
-        SecurityGroupsPerSubscription = 500
-        Location = $Location
-        }
-
-        $storageParams = @{
-        Name = "storagedefault"
-        NumberOfStorageAccounts = 20
-        CapacityInGB = 2048
-        Location = $Location
-        }
-
-        $kvParams = @{
-        Location = $Location
-        }
-
         $quotaIDs = @()
-        $quotaIDs += (New-AzsNetworkQuota @netParams).ID
-        $quotaIDs += (New-AzsComputeQuota @computeParams).ID
-        $quotaIDs += (New-AzsStorageQuota @storageParams).ID
-        $quotaIDs += (Get-AzsKeyVaultQuota @kvParams)
-
-        New-AzureRmResourceGroup -Name $RGName -Location $Location
-        $plan = New-AzsPlan -Name $PlanName -DisplayName $PlanName -ArmLocation $Location -ResourceGroupName $RGName -QuotaIds $QuotaIDs
-        New-AzsOffer -Name $OfferName -DisplayName $OfferName -State Public -BasePlanIds $plan.Id -ResourceGroupName $RGName -ArmLocation $Location 
-        #endregion
+        $quotaIDs += (Get-AzsNetworkQuota).ID
+        $quotaIDs += (Get-AzsComputeQuota).ID
+        $quotaIDs += (Get-AzsStorageQuota).ID
+        $quotaIDs += (Get-AzsKeyVaultQuota).ID
+        
+        New-AzureRmResourceGroup -Name $RGName -Location $Location -Force
+        $plan = New-AzsPlan -Name $PlanName -DisplayName $PlanName -Location $Location -ResourceGroupName $RGName -QuotaIds $QuotaIDs
+        New-AzsOffer -Name $OfferName -DisplayName $OfferName -State Private -BasePlanIds $plan.Id -ResourceGroupName $RGName -Location $Location 
+                #endregion
 
         #region Adding default image Windows Server 2016
-        $ISOPath = "D:\Training\Images\en_windows_server_2016_x64_dvd_9718492.iso"
-        New-AzsServer2016VMImage -ISOPath $ISOPath -Net35 $true -IncludeLatestCU -Location $regionName -CreateGalleryItem $true -Version Full
+        $VHDPath = "D:\Training\Images\WindowsServer2016DatacenterwithGUI1806.vhd"
+        New-AzureRmResourceGroup -Name 'PlatformImages'-Location $Location -Force
+        $storageAcct = New-AzureRmStorageAccount -ResourceGroupName 'PlatformImages' -Name 'platformimages' -Type Standard_LRS -Location $Location
+        $blobUri = $storageAcct.PrimaryEndpoints.Blob.AbsoluteUri + "images/WindowsServer2016DatacenterwithGUI1806.vhd"
+        $storageAcct | New-AzureStorageContainer -Name 'images' -Permission Blob -ErrorAction SilentlyContinue
+        Add-AzureRmVhd -ResourceGroupName 'PlatformImages' -Destination $blobUri -LocalFilePath $VHDPath
+        Add-AzsPlatformimage -publisher MicrosoftWindowsServer -offer WindowsServer -sku 2016-Datacenter -version 1.18.6 -OSType Windows -OSUri $blobUri
+
+        $galleryItemUri = "https://github.com/mattmcspirit/azurestack/raw/master/deployment/packages/WindowsServer/Microsoft.WindowsServer2016Datacenter-ARM.1.0.0.azpkg"
+        Add-AzsGalleryItem -GalleryItemUri $galleryItemUri -Force -Confirm:$false
         #endregion
 
         <#
