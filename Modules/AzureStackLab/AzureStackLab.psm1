@@ -477,7 +477,7 @@ function Start-AzureStackHostConfiguration {
         
         New-AzureRmResourceGroup -Name $RGName -Location $Location -Force
         $plan = New-AzsPlan -Name $PlanName -DisplayName $PlanName -Location $Location -ResourceGroupName $RGName -QuotaIds $QuotaIDs
-        New-AzsOffer -Name $OfferName -DisplayName $OfferName -State Private -BasePlanIds $plan.Id -ResourceGroupName $RGName -Location $Location 
+        New-AzsOffer -Name $OfferName -DisplayName $OfferName -State Public -BasePlanIds $plan.Id -ResourceGroupName $RGName -Location $Location
                 #endregion
 
         #region Adding default image Windows Server 2016
